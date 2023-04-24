@@ -7,11 +7,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from utils import Transition
+from algorithms.Ranking import Ranking
+from algorithms.Max_matching import Max_matching
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
     from IPython import display
 
+def match_size(res):
+    sum = 0
+    for i in res:
+        if i != -1:
+            sum += 1
+    return sum
 
 class policy_estimator(nn.Module):
     def __init__(self, observation_space, action_space):
@@ -221,6 +229,8 @@ class REINFORCE_trainer():
     def train(self, batch_size=10):
         # Set up lists to hold results
         total_rewards = []
+        total_reward_ratios = []
+        total_baseline_ratios = []
         batch_rewards = []
         batch_actions = []
         batch_states = []
@@ -245,9 +255,12 @@ class REINFORCE_trainer():
                     batch_states.extend(states)
                     batch_actions.extend(actions)
                     batch_counter += 1
+                    ranking_match = Ranking(self.env)
+                    max_match  = Max_matching(self.env)
                     total_rewards.append(sum(rewards))
-                    if done:
-                        plot_rewards(total_rewards)
+                    total_reward_ratios.append(sum(rewards)/match_size( max_match ))
+                    total_baseline_ratios.append(match_size(ranking_match)/match_size( max_match ))
+                    plot_two_curve(total_reward_ratios,total_baseline_ratios)
                     # If batch is complete, update network
                     if batch_counter == batch_size:
                         self.optimizer.zero_grad()
@@ -267,18 +280,20 @@ class REINFORCE_trainer():
                         batch_actions = []
                         batch_states = []
                         batch_counter = 0
-                        if ep % self.config.SAVE_INTERVAL == 0:
-                            self.save_model(total_rewards[-1])
+
+                    if ep % self.RL_config.SAVE_INTERVAL == 0:
+                        self.save_model(total_rewards[-1])
 
                     ep += 1
-        print('Complete')
-        plot_rewards(total_rewards, show_result=True)
-        plt.ioff()
-        plt.show()
+
+        # print('Complete')
+        # plot_rewards(total_reward_ratios, show_result=True)
+        # plt.ioff()
+        # plt.show()
 
     def save_model(self, current_total_reward):
         if current_total_reward > self.best_reward:
-            best_path = f"{self.config.SAVE_PATH}/best_checkpoint"
+            best_path = f"{self.RL_config.SAVE_PATH}/best_checkpoint.pt"
             print(f"Saving the model that achived the best rewards so far into {best_path}")
             self.best_reward = current_total_reward
             torch.save(self.policyNet, best_path)
@@ -340,6 +355,34 @@ def plot_rewards(episode_rewards, show_result=False):
     plt.xlabel('Episode')
     plt.ylabel('Reward')
     plt.plot(rewards.numpy())
+    # Take 100 episode averages and plot them too
+    # if len(rewards) >= 100:
+    #     means = rewards.unfold(0, 100, 1).mean(1).view(-1)
+    #     means = torch.cat((torch.zeros(99), means))
+    #     plt.plot(means.numpy())
+
+    plt.pause(0.001)  # pause a bit so that plots are updated
+    if is_ipython:
+        if not show_result:
+            display.display(plt.gcf())
+            display.clear_output(wait=True)
+        else:
+            display.display(plt.gcf())
+
+
+def plot_two_curve(episode_rewards, episode_baseline,show_result=False):
+    plt.figure(1)
+
+    rewards = torch.tensor(episode_rewards, dtype=torch.float)
+    baseline = torch.tensor(episode_baseline, dtype=torch.float)
+    if show_result:
+        plt.title('Result')
+    else:
+        plt.clf()
+        plt.title('Training...')
+    plt.xlabel('Episode')
+    plt.ylabel('Reward')
+    plt.plot(list(zip(rewards.numpy(), baseline.numpy())), label=["rewards","baseline"])
     # Take 100 episode averages and plot them too
     # if len(rewards) >= 100:
     #     means = rewards.unfold(0, 100, 1).mean(1).view(-1)
