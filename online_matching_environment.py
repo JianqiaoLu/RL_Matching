@@ -21,7 +21,7 @@ class BipartiteMatchingGymEnvironment(gym.Env):
             'offline' : 100,
             'online' : 100,
             'edges':[],
-            'time_horizon':1000,
+            'time_horizon':100,
         }
         for key, val in config_defaults.items():
             val = env_config.get(key, val)  # Override defaults with constructor parameters
@@ -31,6 +31,7 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         print("Start to train on online stochastic matching")
 
         self.episode_count = 0
+        self.online_type_list = []
 
         # state: number of bags at each level, item size,
         self.observation_space = spaces.Box(low=np.array([0] * self.offline + [0]), high=np.array(
@@ -73,6 +74,8 @@ class BipartiteMatchingGymEnvironment(gym.Env):
     def reset(self):
         self.time_remaining = self.time_horizon
         self.online_type = self.__get_online_type()
+        self.online_type_list = []
+        self.online_type_list.append(self.online_type)
         self.num_matched_offline = 0
 
         # an boolean array of offline neighbors that keeps track of unmatched neighbors at each level
@@ -117,6 +120,8 @@ class BipartiteMatchingGymEnvironment(gym.Env):
 
         # get the next item
         self.online_type = self.__get_online_type()
+        if not done:
+           self.online_type_list.append(self.online_type)
         # state is the number of bins at each level and the item size
         state = self.list_matched_offline + [self.online_type]
 
