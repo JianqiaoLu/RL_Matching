@@ -40,6 +40,7 @@ class RL_TrainConfig:
     SAVE_PATH: str
     SAVE_INTERVAL: int
     LR : float
+    NUM_EPS : int
     @classmethod
     def from_dict(cls, config: Dict[str, Any]):
         return cls(**config)

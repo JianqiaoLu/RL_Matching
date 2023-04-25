@@ -4,7 +4,7 @@ from itertools import count
 from memory import ReplayMemory
 from trainer import *
 from utils import TrainConfig, RL_TrainConfig
-from online_matching_environment import BipartiteMatchingActionMaskGymEnvironment
+from online_matching_environment import BipartiteMatchingActionMaskGymEnvironment, StochasticBipartiteMatchingActionMaskGymEnvironment
 from algorithms import *
 
 # set up matplotlib
@@ -25,28 +25,27 @@ DQN_config = TrainConfig(
 )
 
 RL_config = RL_TrainConfig(
-    BATCH_SIZE=128,
-    SAVE_PATH='/Users/jianqiaolu/discuss with zhiyi/rl/RL_model',
-    SAVE_INTERVAL=10,
+    BATCH_SIZE=10,
+    SAVE_PATH='/Users/jianqiaolu/discuss with zhiyi/rl/bipartite_matching/Stochastic_RL_model',
+    SAVE_INTERVAL=50,
     LR=1e-4,
+    NUM_EPS = 500,
 )
-env_config = {
-    "bag_capacity": 100,
-    'item_sizes': [1, 2, 3, 4, 5, 6, 7, 8, 9],
-    'item_probabilities': [0, 0, 0, 1 / 3, 0, 0, 0, 0, 2 / 3],  # linear waste
-    # 'item_probabilities': [0.14, 0.10, 0.06, 0.13, 0.11, 0.13, 0.03, 0.11, 0.19], #bounded waste
-    # 'item_probabilities': [0.06, 0.11, 0.11, 0.22, 0, 0.11, 0.06, 0, 0.33], #perfect pack
-    'time_horizon': 1000
+env_configs= {
+    'offline': 100,
+    'online': 100,
+    'edges': [],
+    'time_horizon': 100,
 }
-
-
 
 
 if __name__ == '__main__':
     # set env
     # env = gym.make("CartPole-v1")
     # env = BinPackingActionMaskGymEnvironment()
-    env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
+    # env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
+    env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name='real_graph/socfb-Caltech36/socfb-Caltech36.txt')
+    # env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name= "real_graph/lp_blend/lp_blend.mtx")
     # Get number of actions from gym action space
     n_actions = env.action_space.n
     # Get the number of state observations
@@ -61,14 +60,14 @@ if __name__ == '__main__':
     n_observations = len(state['real_obs'])
     # n_observations = len(state)
 
-    policy_net = DQN(n_observations, n_actions).to(device)
-    target_net = DQN(n_observations, n_actions).to(device)
-    target_net.load_state_dict(policy_net.state_dict())
+    # policy_net = DQN(n_observations, n_actions).to(device)
+    # target_net = DQN(n_observations, n_actions).to(device)
+    # target_net.load_state_dict(policy_net.state_dict())
 
     # only set optimizer for policy_net
-    optimizer = optim.AdamW(policy_net.parameters(), lr=DQN_config.LR, amsgrad=True)
-    memory = ReplayMemory(10000)
-    dqn_trainer = DQN_Trainer(policy_net, target_net, memory, optimizer, env, DQN_config, device)
+    # optimizer = optim.AdamW(policy_net.parameters(), lr=DQN_config.LR, amsgrad=True)
+    # memory = ReplayMemory(10000)
+    # dqn_trainer = DQN_Trainer(policy_net, target_net, memory, optimizer, env, DQN_config, device)
     # dqn_trainer.train()
 
     # REINFORCE trainer model
@@ -77,3 +76,4 @@ if __name__ == '__main__':
 
     rl_trainer = REINFORCE_trainer(policy_net2, optimizer, env, RL_config, device)
     rl_trainer.train()
+    # rl_trainer.test(model_path=rl_trainer.RL_config.SAVE_PATH)
