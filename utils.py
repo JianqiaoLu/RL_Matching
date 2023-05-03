@@ -21,6 +21,8 @@ class TrainConfig:
     EPS_DECAY : int
     TAU : float
     LR : float
+    SAVE_INTERVAL : int
+    SAVE_PATH: str
     @classmethod
     def from_dict(cls, config: Dict[str, Any]):
         return cls(**config)

@@ -31,8 +31,8 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         self.read_graph_from_file(file_name)
 
         # state: offline vertices matched or not, and the adjancent offline vertices
-        self.observation_space = spaces.Box(low=np.array([0] * (2 * self.offline) + [0]), high=np.array(
-            [1] * (2 * self.offline) + [self.online]), dtype=np.uint32)
+        self.observation_space = spaces.Box(low=np.array([0] * (2 * self.offline) + [0] + [0]), high=np.array(
+            [1] * (2 * self.offline) + [self.online] + [1]), dtype=np.uint32)
 
         # actions: choose offline vertices to match or not match to any neighbors
         self.action_space = spaces.Discrete(self.offline + 1)
@@ -89,7 +89,7 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         for y in self.edges[self.online_type]:
             adjencent_list[y - self.online] = 1
 
-        initial_state = self.matched_offline_list + adjencent_list + [self.online_type]
+        initial_state = self.matched_offline_list + adjencent_list + [self.online_type] + [0]
 
         return initial_state
 
@@ -114,7 +114,7 @@ class BipartiteMatchingGymEnvironment(gym.Env):
 
         elif self.matched_offline_list[action] == 1:
             # can't insert item bin overflow
-            print("offline neighbor already matched or choose not to match ")
+            print("offline neighbor already matched ")
             self.rl_matching.append(-1)
 
         elif action == self.offline:
@@ -135,18 +135,19 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         # get the next item
         self.online_type = self.__get_online_type()
 
+        adjencent_list = [0] * self.offline
+
+        for y in self.edges[self.online_type]:
+            adjencent_list[y - self.online] = 1
+
+        # state is the whether offline vertices has already matched and adjancent matrix for current arrival online type
+        state = self.matched_offline_list + adjencent_list + [self.online_type] + [1 - self.time_remaining/self.time_horizon]
+
         # only add online vertex when not done
         if not done:
             self.online_type_list.append(self.online_type)
 
             self.realsize = len(self.online_type_list)
-
-        adjencent_list = [0] * self.offline
-        for y in self.edges[self.online_type]:
-            adjencent_list[y - self.online] = 1
-
-        # state is the whether offline vertices has already matched and adjancent matrix for current arrival online type
-        state = self.matched_offline_list + adjencent_list + [self.online_type]
 
         info = None
 
@@ -249,7 +250,7 @@ class StochasticBipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingActio
                     p = float(p)
                     self.type_prob[i][j] = p
         else:
-            self.optimal_matching_prob(10000, self.online)
+            self.optimal_matching_prob(1000, self.online)
             with open( wf_name, "w" ) as wf:
                 for i in range(self.online):
                     for k in self.type_prob[i].keys():
@@ -259,7 +260,6 @@ class StochasticBipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingActio
 
         # matching probability of online vertex to offline neighbors
         self.get_optimal_matching_prob(file_name)
-
 
 
         self.observation_space['real_obs'] = spaces.Box(low=np.array([0] * (3 * self.offline) + [0]), high=np.array(
