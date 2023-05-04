@@ -45,8 +45,12 @@ class DQN_Trainer(nn.Module):
                 action_logits = self.policy_net(state)
                 inf_mask = torch.log(torch.tensor(observation['action_mask']))
                 masked_logits = inf_mask + action_logits
+                import pdb
+                pdb.set_trace()
                 return masked_logits.max(1)[1].view(1, 1)
         else:
+            import pdb
+            pdb.set_trace()
             return torch.tensor([[self.env.action_space.sample()]], device=self.device, dtype=torch.long)
 
     def train(self):

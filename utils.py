@@ -43,6 +43,9 @@ class RL_TrainConfig:
     SAVE_INTERVAL: int
     LR : float
     NUM_EPS : int
+    EPS_START : float
+    EPS_END : float
+    EPS_DECAY : float
     @classmethod
     def from_dict(cls, config: Dict[str, Any]):
         return cls(**config)

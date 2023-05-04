@@ -26,16 +26,14 @@ DQN_config = TrainConfig(
 )
 
 RL_config = RL_TrainConfig(
-<<<<<<< HEAD
     BATCH_SIZE=10,
     SAVE_PATH='/Users/jianqiaolu/discuss with zhiyi/rl/bipartite_matching/RL_model',
-=======
-    BATCH_SIZE=20,
-    SAVE_PATH='RL_model',
->>>>>>> 7c96449ecf4c411c6465d387b11f890992e5f65b
     SAVE_INTERVAL=1,
     LR=1e-4,
     NUM_EPS = 3000,
+    EPS_START=0.9,
+    EPS_END=0.05,
+    EPS_DECAY=1000,
 )
 env_configs= {
     'offline': 100,
@@ -49,9 +47,9 @@ if __name__ == '__main__':
     # set env
     # env = gym.make("CartPole-v1")
     # env = BinPackingActionMaskGymEnvironment()
-    env = BipartiteMatchingActionMaskGymEnvironment_UpperTriangle(env_config = env_configs)
+    # env = BipartiteMatchingActionMaskGymEnvironment_UpperTriangle(env_config = env_configs)
     # env = BipartiteMatchingGymEnvironment_UpperTriangle(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
-    # env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
+    env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
     # env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
     # val_env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
     # env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name='real_graph/socfb-Caltech36/socfb-Caltech36.txt')

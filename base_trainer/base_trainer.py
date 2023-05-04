@@ -39,12 +39,12 @@ class policy_estimator(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_states, self.n_outputs),
             nn.Softmax(dim=-1)).to(device)
-        
 
     def forward(self, x):
         # action_probs = self.network(torch.FloatTensor(x).to(device))
         action_probs = self.network(x)
         return action_probs
+    
 def plot_durations(episode_durations, show_result=False):
     plt.figure(1)
 
