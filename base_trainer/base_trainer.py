@@ -25,17 +25,11 @@ class policy_estimator(nn.Module):
         super(policy_estimator, self).__init__()
         self.n_inputs = observation_space
         self.n_outputs = action_space
-        hidden_states = 5120
+        hidden_states = 1024
 
         # Define network
         self.network = nn.Sequential(
             nn.Linear(self.n_inputs, hidden_states),
-            nn.ReLU(),
-            nn.Linear(hidden_states, hidden_states),
-            nn.ReLU(),
-            nn.Linear(hidden_states, hidden_states),
-            nn.ReLU(),
-            nn.Linear(hidden_states, hidden_states),
             nn.ReLU(),
             nn.Linear(hidden_states, hidden_states),
             nn.ReLU(),

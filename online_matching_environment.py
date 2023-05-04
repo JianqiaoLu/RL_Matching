@@ -108,6 +108,11 @@ class BipartiteMatchingGymEnvironment(gym.Env):
             print("Error: offline neighbor do not exist.")
             raise
 
+        elif action == self.offline:
+            # choose not to match online vertex
+            print("choose not to match ")
+            self.rl_matching.append(-1)
+
         elif ((action + self.online) not in self.edges[self.online_type]):
             print("offline is not a valid neighbor")
             self.rl_matching.append(-1)
@@ -117,10 +122,7 @@ class BipartiteMatchingGymEnvironment(gym.Env):
             print("offline neighbor already matched ")
             self.rl_matching.append(-1)
 
-        elif action == self.offline:
-            # choose not to match online vertex
-            print("choose not to match ")
-            self.rl_matching.append(-1)
+
 
         else:  # match offline neighbors
             reward = 1
@@ -152,6 +154,176 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         info = None
 
         return state, reward, done, info
+
+class BipartiteMatchingGymEnvironment_UpperTriangle(gym.Env):
+    def __init__(self, env_config={}):
+        config_defaults = {
+            'offline': 100,
+            'online': 100,
+            'edges': [],
+            'time_horizon': 100,
+        }
+
+        for key, val in config_defaults.items():
+            val = env_config.get(key, val)  # Override defaults with constructor parameters
+            self.__dict__[key] = val  # Creates variables like self.plot_boxes, self.save_files, etc
+            if key not in env_config:
+                env_config[key] = val
+
+        print("Start to train on online matching for upper triangle graph")
+
+        self.edges = []
+        for i in range(self.online):
+            online_edge = [self.online + j for j in range(i, self.offline)]
+            self.edges.append(online_edge)
+
+
+        # state: offline vertices matched or not, and the adjancent offline vertices
+        self.observation_space = spaces.Box(low=np.array([0] * (2 * self.offline) + [0] + [0]), high=np.array(
+            [1] * (2 * self.offline) + [self.online] + [1]), dtype=np.uint32)
+
+        # actions: choose offline vertices to match or not match to any neighbors
+        self.action_space = spaces.Discrete(self.offline + 1)
+
+    def reset(self):
+        self.time_remaining = self.time_horizon
+
+        self.online_type = self.time_horizon - self.time_remaining
+
+        self.online_type_list = []
+
+        self.online_type_list.append(self.online_type)
+
+        self.rl_matching = []
+
+        # an boolean array of offline neighbors that keeps track of unmatched neighbors upon each online vertex arrival
+        self.matched_offline_list = [0] * self.offline
+
+        # offline neighbors of online vertex
+        adjencent_list = [0] * self.offline
+        for y in self.edges[self.online_type]:
+            adjencent_list[y - self.online] = 1
+
+        initial_state = self.matched_offline_list + adjencent_list + [self.online_type] + [0]
+
+        return initial_state
+
+    def step(self, action):
+        done = False
+        # set reward of each step
+        reward = 0
+
+        if action > self.offline:
+            print("Error: offline neighbor do not exist.")
+            raise
+
+        elif action == self.offline:
+            # choose not to match online vertex
+            print("choose not to match ")
+            self.rl_matching.append(-1)
+
+        elif ((action + self.online) not in self.edges[self.online_type]):
+            print("offline is not a valid neighbor")
+            self.rl_matching.append(-1)
+
+        elif self.matched_offline_list[action] == 1:
+            # can't insert item bin overflow
+            print("offline neighbor already matched ")
+            self.rl_matching.append(-1)
+
+
+
+        else:  # match offline neighbors
+            reward = 1
+            self.rl_matching.append(action + self.online)
+            self.matched_offline_list[action] = 1
+
+        self.time_remaining -= 1
+
+        if self.time_remaining == 0:
+            done = True
+
+
+        state = None
+        info = None
+        if not done:
+            # get the next item
+            self.online_type = self.time_horizon - self.time_remaining
+
+            adjencent_list = [0] * self.offline
+
+            for y in self.edges[self.online_type]:
+                adjencent_list[y - self.online] = 1
+
+            # state is the whether offline vertices has already matched and adjancent matrix for current arrival online type
+            state = self.matched_offline_list + adjencent_list + [self.online_type] + [
+                1 - self.time_remaining / self.time_horizon]
+
+            # only add online vertex when not done
+            self.online_type_list.append(self.online_type)
+
+            self.realsize = len(self.online_type_list)
+
+
+        return state, reward, done, info
+
+
+
+
+class BipartiteMatchingActionMaskGymEnvironment_UpperTriangle(BipartiteMatchingGymEnvironment_UpperTriangle):
+    def __init__(self, env_config={}):
+        super().__init__(env_config)
+        self.observation_space = spaces.Dict({
+            # a mask of valid actions for adjancent offline neighbors
+            "action_mask": spaces.Box(
+                0,
+                1,
+                shape=(self.action_space.n,),
+                dtype=np.float32),
+            # original observations
+            "real_obs": self.observation_space
+        })
+
+    def reset(self):
+        state = super().reset()
+
+        # only assign online vertex to offline neighbors or do not match
+        valid_actions = self.__get_valid_actions()
+
+        self.action_mask = [1 if x in valid_actions else 0 for x in range(self.action_space.n)]
+
+        obs = {
+            "action_mask": np.array(self.action_mask),
+            "real_obs": np.array(state),
+        }
+
+        return obs
+
+    def step(self, action):
+        state, reward, done, info = super().step(action)
+
+        valid_actions = self.__get_valid_actions()
+
+        self.action_mask = [1 if x in valid_actions else 0 for x in range(self.action_space.n)]
+
+        obs = {
+            "action_mask": np.array(self.action_mask),
+            "real_obs": np.array(state),
+        }
+        return obs, reward, done, info
+
+    def __get_valid_actions(self):
+        valid_actions = list()
+
+        # only allow match online vertex to its adjancent unmatched offline neighbors
+        for y in self.edges[self.online_type]:
+            if not self.matched_offline_list[y - self.online]:
+                valid_actions.append(y - self.online)
+
+        # choose not to match the online vertex
+        valid_actions.append(self.offline)
+
+        return valid_actions
 
 
 class BipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingGymEnvironment):

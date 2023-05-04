@@ -2,7 +2,7 @@ import torch.optim as optim
 from base_trainer.RL_trainer import REINFORCE_Trainer
 from base_trainer.DQN_trainer import DQN_Trainer, DQN
 from utils import TrainConfig, RL_TrainConfig
-from online_matching_environment import BipartiteMatchingActionMaskGymEnvironment, StochasticBipartiteMatchingActionMaskGymEnvironment
+from online_matching_environment import BipartiteMatchingActionMaskGymEnvironment, StochasticBipartiteMatchingActionMaskGymEnvironment, BipartiteMatchingGymEnvironment_UpperTriangle, BipartiteMatchingActionMaskGymEnvironment_UpperTriangle
 from memory import ReplayMemory
 import torch
 from base_trainer.base_trainer import policy_estimator
@@ -25,7 +25,7 @@ DQN_config = TrainConfig(
 )
 
 RL_config = RL_TrainConfig(
-    BATCH_SIZE=100,
+    BATCH_SIZE=10,
     SAVE_PATH='/Users/jianqiaolu/discuss with zhiyi/rl/bipartite_matching/RL_model',
     SAVE_INTERVAL=1,
     LR=1e-4,
@@ -43,10 +43,12 @@ if __name__ == '__main__':
     # set env
     # env = gym.make("CartPole-v1")
     # env = BinPackingActionMaskGymEnvironment()
+    env = BipartiteMatchingActionMaskGymEnvironment_UpperTriangle(env_config = env_configs)
+    # env = BipartiteMatchingGymEnvironment_UpperTriangle(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
     # env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
     # env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
-    val_env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
-    env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name='real_graph/socfb-Caltech36/socfb-Caltech36.txt')
+    # val_env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
+    # env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name='real_graph/socfb-Caltech36/socfb-Caltech36.txt')
     # env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name= "real_graph/lp_blend/lp_blend.mtx")
     # Get number of actions from gym action space
     n_actions = env.action_space.n

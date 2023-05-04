@@ -23,9 +23,11 @@ class REINFORCE_Trainer():
 
             # sample a action by maximazing probabitliy
             else:
+                # return self.env.online_type
+
                 return action_logits.max(1)[1].view(1, 1).item()
 
-    def discount_rewards(self, rewards, gamma=0.99):
+    def discount_rewards(self, rewards, gamma=0.98):
         r = np.array([gamma ** i * rewards[i] for i in range(len(rewards))])
         r = r[::-1].cumsum()[::-1]
         return r - r.mean()
@@ -46,7 +48,7 @@ class REINFORCE_Trainer():
                         total_rewards.append(sum(rewards))
         return total_rewards
 
-    def test(self, model_path, test_rep = 100):
+    def test(self, model_path, test_rep = 10):
         self.policyNet.load_state_dict(torch.load(os.path.join(model_path,'best_checkpoint.pt')))
         self.policyNet.eval()
         rep_rewards_ratio = []
@@ -58,6 +60,7 @@ class REINFORCE_Trainer():
             while not done:
                 action = self.select_action(s_0)
                 s_1, reward, done, _ = self.env.step(action)
+                print("online", self.env.online_type,"action", action, "reward", reward)
                 s_0 = s_1
                 rewards.append(reward)
                 if done:
@@ -89,7 +92,12 @@ class REINFORCE_Trainer():
             actions = []
             done = False
             while done == False:
-                action = self.select_action(s_0)
+                if ep % 2 == 0:
+                    action = self.select_action(s_0)
+
+                else:
+                    action = self.env.online_type
+
                 s_1, reward, done, _ = self.env.step(action)
                 states.append(s_0['real_obs'])
                 rewards.append(reward)
@@ -128,8 +136,8 @@ class REINFORCE_Trainer():
                             eval_rewards = self.validate()
                             self.policyNet.train()
                             self.save_model(eval_rewards)
-
                     ep += 1
+                    print(ep)
 
         print('Complete')
         plot_rewards(total_rewards, show_result= True)
