@@ -111,6 +111,7 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         elif action == self.offline:
             # choose not to match online vertex
             print("choose not to match ")
+
             self.rl_matching.append(-1)
 
         elif ((action + self.online) not in self.edges[self.online_type]):
@@ -121,8 +122,6 @@ class BipartiteMatchingGymEnvironment(gym.Env):
             # can't insert item bin overflow
             print("offline neighbor already matched ")
             self.rl_matching.append(-1)
-
-
 
         else:  # match offline neighbors
             reward = 1

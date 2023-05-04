@@ -39,7 +39,8 @@ class REINFORCE_Trainer():
                 masked_logits = inf_mask + action_logits
                 return masked_logits.max(1)[1].view(1, 1)
         else:
-            return torch.tensor([[self.env.action_space.sample()]], device=self.device, dtype=torch.long)
+            valid_actions = [item for item in range(self.env.offline + 1) if observation['action_mask'][item]]
+            return torch.tensor([[np.random.choice(valid_actions)]], device=self.device, dtype=torch.long)
 
     def select_action_val(self, observation):
         with torch.no_grad():
@@ -117,11 +118,8 @@ class REINFORCE_Trainer():
             actions = []
             done = False
             while done == False:
-                if ep % 2 == 0:
-                    action = self.select_action(s_0).item()
 
-                else:
-                    action = self.env.online_type
+                action = self.select_action(s_0).item()
 
                 s_1, reward, done, _ = self.env.step(action)
                 states.append(s_0['real_obs'])

@@ -84,5 +84,5 @@ if __name__ == '__main__':
     optimizer = optim.AdamW(policy_net2.parameters(), lr=RL_config.LR, amsgrad=True)
 
     rl_trainer = REINFORCE_Trainer(policy_net2, optimizer, env, RL_config, device)
-    rl_trainer.train()
-    # rl_trainer.test(model_path=rl_trainer.config.SAVE_PATH)
+    # rl_trainer.train()
+    rl_trainer.test(model_path=rl_trainer.config.SAVE_PATH)
