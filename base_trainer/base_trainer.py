@@ -19,6 +19,8 @@ if is_ipython:
 
 # set up matplotlib
 plt.ion()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class policy_estimator(nn.Module):
     def __init__(self, observation_space, action_space):
@@ -42,10 +44,12 @@ class policy_estimator(nn.Module):
             nn.Linear(hidden_states, hidden_states),
             nn.ReLU(),
             nn.Linear(hidden_states, self.n_outputs),
-            nn.Softmax(dim=-1))
+            nn.Softmax(dim=-1)).to(device)
+        
 
     def forward(self, x):
-        action_probs = self.network(torch.FloatTensor(x))
+        # action_probs = self.network(torch.FloatTensor(x).to(device))
+        action_probs = self.network(x)
         return action_probs
 def plot_durations(episode_durations, show_result=False):
     plt.figure(1)

@@ -14,7 +14,7 @@ class REINFORCE_Trainer():
         with torch.no_grad():
             state = torch.tensor(observation['real_obs'], dtype=torch.float32, device=self.device).unsqueeze(0)
             action_logits = self.policyNet(state)
-            action_logits *= torch.tensor(observation['action_mask'])
+            action_logits *= torch.tensor(torch.tensor(observation['action_mask'],device = self.device))
 
             # sample a action by random
             if random_choose:
@@ -105,9 +105,9 @@ class REINFORCE_Trainer():
                     # If batch is complete, update network
                     if batch_counter == self.config.BATCH_SIZE:
                         self.optimizer.zero_grad()
-                        state_tensor = torch.FloatTensor(np.array(batch_states))
-                        reward_tensor = torch.FloatTensor(np.array(batch_rewards))
-                        action_tensor = torch.LongTensor(np.array(batch_actions))
+                        state_tensor = torch.FloatTensor(np.array(batch_states)).to(self.device)
+                        reward_tensor = torch.FloatTensor(np.array(batch_rewards)).to(self.device)
+                        action_tensor = torch.LongTensor(np.array(batch_actions)).to(self.device)
                         logprob = torch.log(self.policyNet(state_tensor))
                         selected_logprobs = reward_tensor * (
                             torch.gather(logprob, 1, action_tensor.unsqueeze(1)).squeeze())
