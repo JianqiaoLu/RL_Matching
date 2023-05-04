@@ -12,6 +12,7 @@ from base_trainer.base_trainer import policy_estimator
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+
 DQN_config = TrainConfig(
     BATCH_SIZE=128,
     GAMMA=0.99,
@@ -21,12 +22,17 @@ DQN_config = TrainConfig(
     TAU=0.005,
     LR=1e-4,
     SAVE_INTERVAL=1,
-    SAVE_PATH='/Users/jianqiaolu/discuss with zhiyi/rl/bipartite_matching/DQN_RL_model',
+    SAVE_PATH='DQN_RL_model',
 )
 
 RL_config = RL_TrainConfig(
+<<<<<<< HEAD
     BATCH_SIZE=10,
     SAVE_PATH='/Users/jianqiaolu/discuss with zhiyi/rl/bipartite_matching/RL_model',
+=======
+    BATCH_SIZE=20,
+    SAVE_PATH='RL_model',
+>>>>>>> 7c96449ecf4c411c6465d387b11f890992e5f65b
     SAVE_INTERVAL=1,
     LR=1e-4,
     NUM_EPS = 3000,
