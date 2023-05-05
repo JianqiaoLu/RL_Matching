@@ -2,7 +2,7 @@ import torch.optim as optim
 from base_trainer.RL_trainer import REINFORCE_Trainer
 from base_trainer.DQN_trainer import DQN_Trainer, DQN
 from utils import TrainConfig, RL_TrainConfig
-from online_matching_environment import BipartiteMatchingActionMaskGymEnvironment, StochasticBipartiteMatchingActionMaskGymEnvironment, BipartiteMatchingGymEnvironment_UpperTriangle, BipartiteMatchingActionMaskGymEnvironment_UpperTriangle
+from online_matching_environment import OnlineBipartiteMatchingActionMaskGymEnvironment, StochasticBipartiteMatchingActionMaskGymEnvironment, BipartiteMatchingGymEnvironment_UpperTriangle, BipartiteMatchingActionMaskGymEnvironment_UpperTriangle
 from memory import ReplayMemory
 import torch
 from base_trainer.base_trainer import policy_estimator
@@ -49,7 +49,8 @@ if __name__ == '__main__':
     # env = BinPackingActionMaskGymEnvironment()
     # env = BipartiteMatchingActionMaskGymEnvironment_UpperTriangle(env_config = env_configs)
     # env = BipartiteMatchingGymEnvironment_UpperTriangle(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
-    env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
+    env = OnlineBipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
+    val_env = OnlineBipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/socfb-Caltech36/socfb-Caltech36.txt")
     # env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
     # val_env = BipartiteMatchingActionMaskGymEnvironment(file_name="real_graph/lp_blend/lp_blend.mtx")
     # env = StochasticBipartiteMatchingActionMaskGymEnvironment(file_name='real_graph/socfb-Caltech36/socfb-Caltech36.txt')
@@ -73,10 +74,12 @@ if __name__ == '__main__':
     target_net.load_state_dict(policy_net.state_dict())
 
     # only set optimizer for policy_net
-    # optimizer = optim.AdamW(policy_net.parameters(), lr=DQN_config.LR, amsgrad=True)
-    # memory = ReplayMemory(10000)
-    # dqn_trainer = DQN_Trainer(policy_net, target_net, memory, optimizer, env, val_env,DQN_config, device)
-    # dqn_trainer.train()
+    optimizer = optim.AdamW(policy_net.parameters(), lr=DQN_config.LR, amsgrad=True)
+    memory = ReplayMemory(10000)
+    dqn_trainer = DQN_Trainer(policy_net, target_net, memory, optimizer, env, val_env,DQN_config, device)
+    dqn_trainer.train()
+    import pdb
+    pdb.set_trace()
 
 
     # REINFORCE trainer model
@@ -84,5 +87,5 @@ if __name__ == '__main__':
     optimizer = optim.AdamW(policy_net2.parameters(), lr=RL_config.LR, amsgrad=True)
 
     rl_trainer = REINFORCE_Trainer(policy_net2, optimizer, env, RL_config, device)
-    # rl_trainer.train()
-    rl_trainer.test(model_path=rl_trainer.config.SAVE_PATH)
+    rl_trainer.train()
+    # rl_trainer.test(model_path=rl_trainer.config.SAVE_PATH)

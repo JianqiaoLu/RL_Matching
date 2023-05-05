@@ -4,9 +4,8 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-
-class BipartiteMatchingGymEnvironment(gym.Env):
-
+# basic online graph environment who read graph from file
+class OnlineGraphGymEnvironment(gym.Env):
     def __init__(self, env_config={}, file_name=''):
         config_defaults = {
             'offline': 100,
@@ -24,21 +23,15 @@ class BipartiteMatchingGymEnvironment(gym.Env):
             if key not in env_config:
                 env_config[key] = val
 
-        print("Start to train on online stochastic matching")
-
-        self.online_type_list = []
-
         self.read_graph_from_file(file_name)
 
-        # state: offline vertices matched or not, and the adjancent offline vertices
+        # state: offline vertices matched or not, the adjancent offline vertices, online vertex number, and arrival time
         self.observation_space = spaces.Box(low=np.array([0] * (2 * self.offline) + [0] + [0]), high=np.array(
             [1] * (2 * self.offline) + [self.online] + [1]), dtype=np.uint32)
 
         # actions: choose offline vertices to match or not match to any neighbors
         self.action_space = spaces.Discrete(self.offline + 1)
 
-        # set online arrival rate
-        self.__set_online_arrival_rate()
 
     def read_graph_from_file(self, file_name):
 
@@ -61,43 +54,6 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         self.offline = n
         self.online = n
         self.time_horizon = n
-
-    def __set_online_arrival_rate(self):
-        if hasattr(self, 'arrival_rate'):
-            self.online_arrival_rate = self.arrival_rate
-        else:
-            self.online_arrival_rate = [1] * self.online
-
-        self.online_arrival_rate = [item / sum(self.online_arrival_rate) for item in self.online_arrival_rate]
-
-    def reset(self):
-        self.time_remaining = self.time_horizon
-
-        self.online_type = self.__get_online_type()
-
-        self.online_type_list = []
-
-        self.online_type_list.append(self.online_type)
-
-        self.rl_matching = []
-
-        # an boolean array of offline neighbors that keeps track of unmatched neighbors upon each online vertex arrival
-        self.matched_offline_list = [0] * self.offline
-
-        # offline neighbors of online vertex
-        adjencent_list = [0] * self.offline
-        for y in self.edges[self.online_type]:
-            adjencent_list[y - self.online] = 1
-
-        initial_state = self.matched_offline_list + adjencent_list + [self.online_type] + [0]
-
-        return initial_state
-
-    def __get_online_type(self):
-
-        online_type = np.random.choice(self.online, p=self.online_arrival_rate)
-
-        return online_type
 
     def step(self, action):
         done = False
@@ -132,8 +88,87 @@ class BipartiteMatchingGymEnvironment(gym.Env):
 
         if self.time_remaining == 0:
             done = True
+        
+        info = None
 
-        # get the next item
+        return reward, done, info
+
+
+
+
+
+# online bipartite matching environment
+class OnlineBipartiteMatchingGymEnvironment(OnlineGraphGymEnvironment):
+    def __init__(self, env_config={}, file_name=''):
+        super().__init__(env_config, file_name)
+        self.online_vertex_arrival_order = [i for i in range(self.online)]
+       
+        
+
+    def step(self, action):
+        reward, done, info = super().step(action)
+        # get the next item which differs in different matching model
+        if not done:
+            self.online_type = self.__get_online_type()
+
+            adjencent_list = [0] * self.offline
+
+            for y in self.edges[self.online_type]:
+                adjencent_list[y - self.online] = 1
+
+            # state is the whether offline vertices has already matched and adjancent matrix for current arrival online type
+            state = self.matched_offline_list + adjencent_list + [self.online_type] + [1 - self.time_remaining/self.time_horizon]
+
+            self.online_type_list.append(self.online_type)
+
+            self.realsize = len(self.online_type_list)
+        else:
+            state = None
+
+        return state, reward, done, info
+
+    def __get_online_type(self):
+        return self.online_vertex_arrival_order[self.time_horizon - self.time_remaining]
+
+    def reset(self):
+
+        np.random.shuffle(self.online_vertex_arrival_order)
+
+        self.time_remaining = self.time_horizon
+
+        self.online_type = self.__get_online_type()
+
+        self.online_type_list = []
+
+        self.online_type_list.append(self.online_type)
+
+        self.rl_matching = []
+
+        # an boolean array of offline neighbors that keeps track of unmatched neighbors upon each online vertex arrival
+        self.matched_offline_list = [0] * self.offline
+
+        # offline neighbors of online vertex
+        adjencent_list = [0] * self.offline
+
+        for y in self.edges[self.online_type]:
+            adjencent_list[y - self.online] = 1
+
+        initial_state = self.matched_offline_list + adjencent_list + [self.online_type] + [0]
+
+        return initial_state
+
+# online stochastic matching environment
+class StochasticBipartiteMatchingGymEnvironment(OnlineGraphGymEnvironment):
+
+    def __init__(self, env_config={}, file_name=''):
+        super().__init__(env_config, file_name)
+
+        # set online arrival rate
+        self.__set_online_arrival_rate()
+    
+    def step(self, action):
+        reward, done, info = super().step(action)
+        # get the next item which differs in different matching model
         self.online_type = self.__get_online_type()
 
         adjencent_list = [0] * self.offline
@@ -144,15 +179,46 @@ class BipartiteMatchingGymEnvironment(gym.Env):
         # state is the whether offline vertices has already matched and adjancent matrix for current arrival online type
         state = self.matched_offline_list + adjencent_list + [self.online_type] + [1 - self.time_remaining/self.time_horizon]
 
-        # only add online vertex when not done
-        if not done:
-            self.online_type_list.append(self.online_type)
-
-            self.realsize = len(self.online_type_list)
-
-        info = None
-
         return state, reward, done, info
+
+    def __set_online_arrival_rate(self):
+        if hasattr(self, 'arrival_rate'):
+            self.online_arrival_rate = self.arrival_rate
+        else:
+            self.online_arrival_rate = [1] * self.online
+
+        self.online_arrival_rate = [item / sum(self.online_arrival_rate) for item in self.online_arrival_rate]
+
+    def __get_online_type(self):
+
+        online_type = np.random.choice(self.online, p=self.online_arrival_rate)
+
+        return online_type
+
+    def reset(self):
+        self.time_remaining = self.time_horizon
+
+        self.online_type = self.__get_online_type()
+
+        self.online_type_list = []
+
+        self.online_type_list.append(self.online_type)
+
+        self.rl_matching = []
+
+        # an boolean array of offline neighbors that keeps track of unmatched neighbors upon each online vertex arrival
+        self.matched_offline_list = [0] * self.offline
+
+        # offline neighbors of online vertex
+        adjencent_list = [0] * self.offline
+
+        for y in self.edges[self.online_type]:
+            adjencent_list[y - self.online] = 1
+
+        initial_state = self.matched_offline_list + adjencent_list + [self.online_type] + [0]
+
+        return initial_state
+
 
 class BipartiteMatchingGymEnvironment_UpperTriangle(gym.Env):
     def __init__(self, env_config={}):
@@ -218,6 +284,9 @@ class BipartiteMatchingGymEnvironment_UpperTriangle(gym.Env):
 
         elif action == self.offline:
             # choose not to match online vertex
+            import pdb 
+            pdb.set_trace()
+            
             print("choose not to match ")
             self.rl_matching.append(-1)
 
@@ -325,7 +394,7 @@ class BipartiteMatchingActionMaskGymEnvironment_UpperTriangle(BipartiteMatchingG
         return valid_actions
 
 
-class BipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingGymEnvironment):
+class OnlineBipartiteMatchingActionMaskGymEnvironment(OnlineBipartiteMatchingGymEnvironment):
     def __init__(self, env_config={}, file_name=''):
         super().__init__(env_config, file_name)
         self.observation_space = spaces.Dict({
@@ -365,6 +434,7 @@ class BipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingGymEnvironment)
             "action_mask": np.array(self.action_mask),
             "real_obs": np.array(state),
         }
+
         return obs, reward, done, info
 
     def __get_valid_actions(self):
@@ -384,7 +454,20 @@ class BipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingGymEnvironment)
 from algorithms.Max_matching import Max_matching
 
 
-class StochasticBipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingActionMaskGymEnvironment):
+class StochasticBipartiteMatchingActionMaskGymEnvironment(StochasticBipartiteMatchingGymEnvironment):
+    def __init__(self, env_config={}, file_name=''):
+        super().__init__(env_config, file_name)
+
+        # matching probability of online vertex to offline neighbors
+        self.get_optimal_matching_prob(file_name)
+
+
+        self.observation_space['real_obs'] = spaces.Box(low=np.array([0] * (3 * self.offline) + [0]), high=np.array(
+            [1] * (3 * self.offline) + [self.online]), dtype=np.float32)
+
+        # for key in self.type_prob[self.online_type].keys():
+        #     online_type_prob [key - self.online] = self.type_prob[self.online_type][key]
+
     def optimal_matching_prob(self, sample_num, real_size):
         self.type_prob = list()
         for i in range(self.online):
@@ -426,18 +509,7 @@ class StochasticBipartiteMatchingActionMaskGymEnvironment(BipartiteMatchingActio
                 for i in range(self.online):
                     for k in self.type_prob[i].keys():
                         wf.writelines( f"{i}, {k}, {self.type_prob[i][k]}\n")
-    def __init__(self, env_config={}, file_name=''):
-        super().__init__(env_config, file_name)
 
-        # matching probability of online vertex to offline neighbors
-        self.get_optimal_matching_prob(file_name)
-
-
-        self.observation_space['real_obs'] = spaces.Box(low=np.array([0] * (3 * self.offline) + [0]), high=np.array(
-            [1] * (3 * self.offline) + [self.online]), dtype=np.float32)
-
-        # for key in self.type_prob[self.online_type].keys():
-        #     online_type_prob [key - self.online] = self.type_prob[self.online_type][key]
     def reset(self):
         obs = super().reset()
 

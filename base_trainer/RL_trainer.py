@@ -92,8 +92,10 @@ class REINFORCE_Trainer():
                 if done:
                     ranking_match = Ranking(self.env)
                     max_match = Max_matching(self.env)
+                    
                     rep_baseline_ratio.append(match_size(ranking_match)/match_size(max_match))
                     rep_rewards_ratio.append(sum(rewards)/match_size(max_match))
+                    
                     plot_two_curve(rep_rewards_ratio, rep_baseline_ratio)
 
         print('Complete')
@@ -138,11 +140,7 @@ class REINFORCE_Trainer():
                         self.optimizer.zero_grad()
                         state_tensor = torch.FloatTensor(np.array(batch_states)).to(self.device)
                         reward_tensor = torch.FloatTensor(np.array(batch_rewards)).to(self.device)
-                        try:
-                            action_tensor = torch.LongTensor(np.array(batch_actions)).to(self.device)
-                        except:
-                            import pdb
-                            pdb.set_trace()
+                        action_tensor = torch.LongTensor(np.array(batch_actions)).to(self.device)
                         logprob = torch.log(self.policy_net(state_tensor))
                         selected_logprobs = reward_tensor * (
                             torch.gather(logprob, 1, action_tensor.unsqueeze(1)).squeeze())
